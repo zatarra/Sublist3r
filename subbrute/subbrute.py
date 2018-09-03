@@ -166,7 +166,7 @@ class verify_nameservers(multiprocessing.Process):
                             # We found atleast one wildcard, look for more.
                             looking_for_wildcards = True
             except Exception as e:
-                if type(e) == dns.resolver.NXDOMAIN or type(e) == dns.name.EmptyLabel:
+                if type(e) == dns.resolver.NXDOMAIN or type(e) == dns.name.EmptyLabel or type(e) == dns.resolver.NoAnswer:
                     #not found
                     return True
                 else:
@@ -199,8 +199,8 @@ class lookup(multiprocessing.Process):
         ret = []
         try:
             ret = [self.resolver_q.get_nowait()]
-            if ret == False:
-                # Queue is empty,  inform the rest.
+            if ret == [False]:
+                #Queue is empty,  inform the rest.
                 self.resolver_q.put(False)
                 ret = []
         except:
@@ -210,7 +210,7 @@ class lookup(multiprocessing.Process):
     def get_ns_blocking(self):
         ret = []
         ret = [self.resolver_q.get()]
-        if ret == False:
+        if ret == [False]:
             trace("get_ns_blocking - Resolver list is empty.")
             # Queue is empty,  inform the rest.
             self.resolver_q.put(False)

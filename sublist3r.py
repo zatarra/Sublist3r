@@ -30,6 +30,10 @@ else:
     import urlparse
     import urllib
 
+# Save a global list with the scan details. 
+# Can be used for output purposes
+subdomains_list = dict()
+
 # In case you cannot install some of the required development packages
 # there's also an option to disable the SSL warning:
 try:
@@ -55,7 +59,7 @@ if is_windows:
         win_unicode_console.enable()
         colorama.init()
         # Now the unicode will work ^_^
-    except (ImportError, ImportWarning):
+    except:
         print("[!] Error: Coloring libraries not installed, no coloring will be used [Check the readme]")
         G = Y = B = R = W = G = Y = B = R = W = ''
 
@@ -74,10 +78,11 @@ def banner():
                 / ___| _   _| |__ | (_)___| |_|___ / _ __
                 \___ \| | | | '_ \| | / __| __| |_ \| '__|
                  ___) | |_| | |_) | | \__ \ |_ ___) | |
-                |____/ \__,_|_.__/|_|_|___/\__|____/|_|%s%s
+                |____/ \__,_|_.__/|_|_|___/\__|____/|_|%s REBOOT!%s
 
                 # Coded By Ahmed Aboul-Ela - @aboul3la
-    """ % (R, W, Y))
+                # Improved By David Gouveia - @davidsgouveia
+    """ % (R, B, Y))
 
 
 def parser_error(errmsg):
@@ -106,15 +111,15 @@ def parse_args():
     parser.add_argument(
         '-e', '--engines', help='Specify a comma-separated list of search engines')
     parser.add_argument('-o', '--output', help='Save the results to text file')
+    parser.add_argument('-f', '--format', help='Output format: <text|json>', type=str, default="text")
+    parser.add_argument('-i', '--findip', help='Find IP address of each subdomain', action='store_true')
     return parser.parse_args()
 
 
-def write_file(filename, subdomains):
+def write_file(filename, data):
     # saving subdomains results to output file
-    print("%s[-] Saving results to file: %s%s%s%s" % (Y, W, R, filename, W))
-    with open(str(filename), 'wt') as f:
-        for subdomain in subdomains:
-            f.write(subdomain + os.linesep)
+    with open(str(filename), 'a') as f:
+        f.write(data + "\n")
 
 
 def subdomain_sorting_key(hostname):
@@ -143,7 +148,14 @@ def subdomain_sorting_key(hostname):
     return parts, 0
 
 
-class enumratorBase(object):
+def get_host_by_name(subdomain):
+    try:
+        return socket.gethostbyname(subdomain)
+    except Exception:
+        return "0.0.0.0"
+
+
+class EnumratorBase(object):
     def __init__(self, base_url, engine_name, domain, subdomains=None, silent=False, verbose=True):
         subdomains = subdomains or []
         self.domain = urlparse.urlparse(domain).netloc
@@ -165,12 +177,10 @@ class enumratorBase(object):
     def print_(self, text):
         if not self.silent:
             print(text)
-        return
 
     def print_banner(self):
         """ subclass can override this if they want a fancy banner :)"""
         self.print_(G + "[-] Searching now in %s.." % (self.engine_name) + W)
-        return
 
     def send_req(self, query, page_no=1):
 
@@ -262,11 +272,10 @@ class enumratorBase(object):
         return self.subdomains
 
 
-class enumratorBaseThreaded(multiprocessing.Process, enumratorBase):
+class EnumratorBaseThreaded(multiprocessing.Process, EnumratorBase):
     def __init__(self, base_url, engine_name, domain, subdomains=None, q=None, lock=threading.Lock(), silent=False, verbose=True):
         subdomains = subdomains or []
-        enumratorBase.__init__(self, base_url, engine_name,
-                               domain, subdomains, silent=silent, verbose=verbose)
+        EnumratorBase.__init__(self, base_url, engine_name, domain, subdomains, silent=silent, verbose=verbose)
         multiprocessing.Process.__init__(self)
         self.lock = lock
         self.q = q
@@ -278,7 +287,7 @@ class enumratorBaseThreaded(multiprocessing.Process, enumratorBase):
             self.q.append(domain)
 
 
-class GoogleEnum(enumratorBaseThreaded):
+class GoogleEnum(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         base_url = "https://google.com/search?q={query}&btnG=Search&hl=en-US&biw=&bih=&gbv=1&start={page_no}&filter=0"
@@ -331,7 +340,7 @@ class GoogleEnum(enumratorBaseThreaded):
         return query
 
 
-class YahooEnum(enumratorBaseThreaded):
+class YahooEnum(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         base_url = "https://search.yahoo.com/search?p={query}&b={page_no}"
@@ -386,15 +395,14 @@ class YahooEnum(enumratorBaseThreaded):
         return query
 
 
-class AskEnum(enumratorBaseThreaded):
+class AskEnum(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         base_url = 'http://www.ask.com/web?q={query}&page={page_no}&qid=8D6EE6BF52E0C04527E51F64F22C4534&o=0&l=dir&qsrc=998&qo=pagination'
         self.engine_name = "Ask"
         self.MAX_DOMAINS = 11
         self.MAX_PAGES = 0
-        enumratorBaseThreaded.__init__(
-            self, base_url, self.engine_name, domain, subdomains, q=q, silent=silent, verbose=verbose)
+        EnumratorBaseThreaded.__init__(self, base_url, self.engine_name, domain, subdomains, q=q, silent=silent, verbose=verbose)
         self.q = q
         return
 
@@ -431,15 +439,14 @@ class AskEnum(enumratorBaseThreaded):
         return query
 
 
-class BingEnum(enumratorBaseThreaded):
+class BingEnum(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         base_url = 'https://www.bing.com/search?q={query}&go=Submit&first={page_no}'
         self.engine_name = "Bing"
         self.MAX_DOMAINS = 30
         self.MAX_PAGES = 0
-        enumratorBaseThreaded.__init__(
-            self, base_url, self.engine_name, domain, subdomains, q=q, silent=silent)
+        EnumratorBaseThreaded.__init__(self, base_url, self.engine_name, domain, subdomains, q=q, silent=silent)
         self.q = q
         self.verbose = verbose
         return
@@ -478,15 +485,14 @@ class BingEnum(enumratorBaseThreaded):
         return query
 
 
-class BaiduEnum(enumratorBaseThreaded):
+class BaiduEnum(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         base_url = 'https://www.baidu.com/s?pn={page_no}&wd={query}&oq={query}'
         self.engine_name = "Baidu"
         self.MAX_DOMAINS = 2
         self.MAX_PAGES = 760
-        enumratorBaseThreaded.__init__(
-            self, base_url, self.engine_name, domain, subdomains, q=q, silent=silent, verbose=verbose)
+        EnumratorBaseThreaded.__init__(self, base_url, self.engine_name, domain, subdomains, q=q, silent=silent, verbose=verbose)
         self.querydomain = self.domain
         self.q = q
         return
@@ -542,7 +548,7 @@ class BaiduEnum(enumratorBaseThreaded):
         return query
 
 
-class NetcraftEnum(enumratorBaseThreaded):
+class NetcraftEnum(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         self.base_url = 'https://searchdns.netcraft.com/?restriction=site+ends+with&host={domain}'
@@ -619,7 +625,7 @@ class NetcraftEnum(enumratorBaseThreaded):
         return links_list
 
 
-class DNSdumpster(enumratorBaseThreaded):
+class DNSdumpster(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         base_url = 'https://dnsdumpster.com/'
@@ -634,11 +640,11 @@ class DNSdumpster(enumratorBaseThreaded):
 
     def check_host(self, host):
         is_valid = False
-        Resolver = dns.resolver.Resolver()
-        Resolver.nameservers = ['8.8.8.8', '8.8.4.4']
+        resolver = dns.resolver.Resolver()
+        resolver.nameservers = ['8.8.8.8', '8.8.4.4']
         self.lock.acquire()
         try:
-            ip = Resolver.query(host, 'A')[0].to_text()
+            ip = resolver.query(host, 'A')[0].to_text()
             if ip:
                 if self.verbose:
                     self.print_("%s%s: %s%s" % (R, self.engine_name, W, host))
@@ -703,7 +709,7 @@ class DNSdumpster(enumratorBaseThreaded):
         return links
 
 
-class Virustotal(enumratorBaseThreaded):
+class Virustotal(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         base_url = 'https://www.virustotal.com/en/domain/{domain}/information/'
@@ -750,7 +756,7 @@ class Virustotal(enumratorBaseThreaded):
             pass
 
 
-class ThreatCrowd(enumratorBaseThreaded):
+class ThreatCrowd(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         base_url = 'https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}'
@@ -788,11 +794,11 @@ class ThreatCrowd(enumratorBaseThreaded):
                         self.print_("%s%s: %s%s" %
                                     (R, self.engine_name, W, subdomain))
                     self.subdomains.append(subdomain.strip())
-        except Exception as e:
+        except Exception:
             pass
 
 
-class CrtSearch(enumratorBaseThreaded):
+class CrtSearch(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         base_url = 'https://crt.sh/?q=%25.{domain}'
@@ -836,11 +842,11 @@ class CrtSearch(enumratorBaseThreaded):
                         self.print_("%s%s: %s%s" %
                                     (R, self.engine_name, W, subdomain))
                     self.subdomains.append(subdomain.strip())
-        except Exception as e:
+        except Exception:
             pass
 
 
-class PassiveDNS(enumratorBaseThreaded):
+class PassiveDNS(EnumratorBaseThreaded):
     def __init__(self, domain, subdomains=None, q=None, silent=False, verbose=True):
         subdomains = subdomains or []
         base_url = 'https://api.sublist3r.com/search.php?domain={domain}'
@@ -853,9 +859,8 @@ class PassiveDNS(enumratorBaseThreaded):
 
     def req(self, url):
         try:
-            resp = self.session.get(
-                url, headers=self.headers, timeout=self.timeout)
-        except Exception as e:
+            resp = self.session.get(url, headers=self.headers, timeout=self.timeout)
+        except Exception:
             resp = None
 
         return self.get_response(resp)
@@ -878,43 +883,82 @@ class PassiveDNS(enumratorBaseThreaded):
                         self.print_("%s%s: %s%s" %
                                     (R, self.engine_name, W, subdomain))
                     self.subdomains.append(subdomain.strip())
-        except Exception as e:
+        except Exception:
             pass
 
 
-class portscan():
-    def __init__(self, subdomains, ports):
+class Portscan():
+    subdomains_list = {}
+    def __init__(self, subdomains, ports, savefile, find_ip=False, json_subdomains=None):
+        self.thread_list = []
+        subdomains_list = json_subdomains
         self.subdomains = subdomains
         self.ports = ports
+        self.savefile = savefile
+        self.find_ip = find_ip
         self.threads = 20
-        self.lock = threading.BoundedSemaphore(value=self.threads)
+        self.scan_lock = threading.BoundedSemaphore(value=self.threads)
+        self.write_lock = threading.Lock()
 
-    def port_scan(self, host, ports):
-        openports = []
-        self.lock.acquire()
-        for port in ports:
+    def port_scan(self, subdomain):
+        open_ports = []
+
+        self.scan_lock.acquire()
+        for port in self.ports:
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(2)
-                result = s.connect_ex((host, int(port)))
+                result = s.connect_ex((subdomain, int(port)))
                 if result == 0:
-                    openports.append(port)
+                    open_ports.append(port)
                 s.close()
             except Exception:
                 pass
-        self.lock.release()
-        if len(openports) > 0:
-            print("%s%s%s - %sFound open ports:%s %s%s%s" %
-                  (G, host, W, R, W, Y, ', '.join(openports), W))
+        if subdomains_list:
+            subdomains_list[subdomain]["ports"] = open_ports
+
+        self.scan_lock.release()
+
+        # Lock to prevent incorrect output format with threading
+        self.write_lock.acquire()
+        if len(open_ports) > 0:
+            if self.find_ip:
+                ip = get_host_by_name(subdomain)
+                print("{}{} ({}){} - {}Found open ports:{} {}{}{}".format(G, subdomain, ip, W, R,
+                      W, Y, ', '.join(open_ports), W))
+                #if self.savefile:
+                #    write_file(self.savefile, "{},{},{}".format(subdomain,
+                #               ip, ','.join(open_ports)))
+            else:
+                print("{}{}{} - {}Found open ports:{} {}{}{}".format(G, subdomain, W, R, W, Y,
+                      ', '.join(open_ports), W))
+                #if self.savefile:
+                #    write_file(self.savefile, "{},{}".format(subdomain,
+                #               ','.join(open_ports)))
+        else:
+            if self.find_ip:
+                ip = get_host_by_name(subdomain)
+                print("{}{} ({}){}".format(G, subdomain, ip, W))
+                #if self.savefile:
+                #    write_file(self.savefile, "{},{}".format(subdomain, ip))
+            else:
+                print("{}{}{}".format(G, subdomain, W))
+                #if self.savefile:
+                #    write_file(self.savefile, "{}".format(subdomain))
+
+        self.write_lock.release()
 
     def run(self):
         for subdomain in self.subdomains:
-            t = threading.Thread(target=self.port_scan,
-                                 args=(subdomain, self.ports))
+            t = threading.Thread(target=self.port_scan, args=(subdomain, ))
             t.start()
+            self.thread_list.append(t)
 
+        for i in self.thread_list:
+            i.join()
+            
 
-def main(domain, threads, savefile, ports=None, silent=True, verbose=False, enable_bruteforce=False, engines=None):
+def main(domain, threads, savefile, ports, silent, verbose, enable_bruteforce, engines, find_ip, fileformat, json_subdomains):
     bruteforce_list = set()
     search_list = set()
 
@@ -944,22 +988,24 @@ def main(domain, threads, savefile, ports=None, silent=True, verbose=False, enab
         print(
             Y + "[-] verbosity is enabled, will show the subdomains results in realtime" + W)
 
-    supported_engines = {'baidu': BaiduEnum,
-                         'yahoo': YahooEnum,
-                         'google': GoogleEnum,
-                         'bing': BingEnum,
-                         'ask': AskEnum,
-                         'netcraft': NetcraftEnum,
-                         'dnsdumpster': DNSdumpster,
-                         'virustotal': Virustotal,
-                         'threatcrowd': ThreatCrowd,
-                         'ssl': CrtSearch,
-                         'passivedns': PassiveDNS}
+    supported_engines = {
+        'baidu': BaiduEnum,
+        'yahoo': YahooEnum,
+        'google': GoogleEnum,
+        'bing': BingEnum,
+        'ask': AskEnum,
+        'netcraft': NetcraftEnum,
+        'dnsdumpster': DNSdumpster,
+        'virustotal': Virustotal,
+        'threatcrowd': ThreatCrowd,
+        'ssl': CrtSearch,
+        'passivedns': PassiveDNS
+    }
 
-    chosenEnums = []
+    chosen_enums = []
 
     if engines is None:
-        chosenEnums = [
+        chosen_enums = [
             BaiduEnum, YahooEnum, GoogleEnum, BingEnum, AskEnum,
             NetcraftEnum, DNSdumpster, Virustotal, ThreatCrowd,
             CrtSearch, PassiveDNS
@@ -972,11 +1018,10 @@ def main(domain, threads, savefile, ports=None, silent=True, verbose=False, enab
         engines = engines.split(',')
         for engine in engines:
             if engine.lower() in supported_engines:
-                chosenEnums.append(supported_engines[engine.lower()])
+                chosen_enums.append(supported_engines[engine.lower()])
 
     # Start the engines enumeration
-    enums = [enum(domain, [], q=subdomains_queue, silent=silent,
-                  verbose=verbose) for enum in chosenEnums]
+    enums = [enum(domain, [], q=subdomains_queue, silent=silent, verbose=verbose) for enum in chosen_enums]
     for enum in enums:
         enum.start()
     for enum in enums:
@@ -996,34 +1041,38 @@ def main(domain, threads, savefile, ports=None, silent=True, verbose=False, enab
         process_count = threads
         output = False
         json_output = False
-        bruteforce_list = subbrute.print_target(
-            parsed_domain.netloc, record_type, subs, resolvers, process_count, output, json_output, search_list, verbose)
+
+        bruteforce_list = subbrute.print_target(parsed_domain.netloc, record_type, subs, resolvers, process_count, output, json_output, search_list, verbose)
 
     subdomains = search_list.union(bruteforce_list)
+    
 
     if subdomains:
         subdomains = sorted(subdomains, key=subdomain_sorting_key)
+        for subdomain in subdomains:
+            json_subdomains[subdomain] = {"ip": None, "ports": None}
+            if find_ip:
+                json_subdomains[subdomain]["ip"] = get_host_by_name(subdomain)
+                print("{}{} ({}){}".format(G, subdomain, json_subdomains[subdomain]["ip"], W))
+            else:
+                print("{}{}{}".format(G, subdomain, W))
 
-        if savefile:
-            write_file(savefile, subdomains)
 
         if not silent:
             print(Y + "[-] Total Unique Subdomains Found: %s" %
                   len(subdomains) + W)
 
+#        if savefile:
+#            write_file(savefile, json.dumps(json_subdomains, indent=2))
+
         if ports:
             if not silent:
-                print(
-                    G + "[-] Start port scan now for the following ports: %s%s" % (Y, ports) + W)
-            if isinstance(port, str):
-                ports = ports.split(',')
-            pscan = portscan(subdomains, ports)
+                print(G + "[-] Start port scan now for the following ports: %s%s" % (Y, ports) + W)
+            ports = ports.split(',')
+            pscan = Portscan(subdomains, ports, savefile, find_ip, json_subdomains)
             pscan.run()
 
-        elif not silent:
-            for subdomain in subdomains:
-                print(G + subdomain + W)
-    return subdomains
+    return json_subdomains
 
 
 if __name__ == "__main__":
@@ -1031,10 +1080,32 @@ if __name__ == "__main__":
     domain = args.domain
     threads = args.threads
     savefile = args.output
+    fileformat = args.format
     ports = args.ports
     enable_bruteforce = args.bruteforce
     verbose = args.verbose
     engines = args.engines
+    find_ip = args.findip
+
+    if verbose or verbose is None:
+      verbose = True
     banner()
-    res = main(domain, threads, savefile, ports, silent=False,
-               verbose=verbose, enable_bruteforce=enable_bruteforce, engines=engines)
+
+    for domain in args.domain.split(","):
+        subdomains_list = {}
+        res = main(domain, threads, savefile, ports, silent=False, verbose=verbose, enable_bruteforce=enable_bruteforce, engines=engines, find_ip=find_ip, fileformat=fileformat, json_subdomains=subdomains_list)
+        if savefile:
+            pattern_file = "{}_{}".format(savefile, domain)
+
+            if os.path.isfile(pattern_file):
+                user_input = raw_input("{}[-] File exists!{} Do you want to overwrite file {}{}{}? [y/n] ".format(R, W, Y, pattern_file, W))
+                if not user_input.lower().startswith('y'):
+                    print("{}[-] Please re-run the script with different output file name{}".format(R, W))
+                    sys.exit(1)
+            print("%s[-] Saving results to file: %s%s%s%s" % (Y, W, R, pattern_file, W))        
+            with open(pattern_file, "w") as o:
+                if fileformat  == "json":
+                    o.write(json.dumps(res, indent=2))
+                else:
+                    o.write("\n".join(res.keys()))
+

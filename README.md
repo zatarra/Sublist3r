@@ -1,3 +1,14 @@
+## About this Fork
+
+This fork differs from the original Sublist3r project in the following ways:
+* Allows multiple domains to be searched at once (comma separated list)
+* Outputs to plain text or json format 
+* Some bugfixes provided by the community that were added to this version:
+
+[PR#140](https://github.com/aboul3la/Sublist3r/pull/140)
+[PR#139](https://github.com/aboul3la/Sublist3r/pull/139)
+[PR#138](https://github.com/aboul3la/Sublist3r/pull/138)
+
 ## About Sublist3r
 
 Sublist3r is a python tool designed to enumerate subdomains of websites using OSINT. It helps penetration testers and bug hunters collect and gather subdomains for the domain they are targeting. Sublist3r enumerates subdomains using many search engines such as Google, Yahoo, Bing, Baidu, and Ask. Sublist3r also enumerates subdomains using Netcraft, Virustotal, ThreatCrowd, DNSdumpster, and ReverseDNS.
@@ -102,17 +113,18 @@ c:\python27\python.exe -m pip install win_unicode_console colorama
 
 ## Usage
 
-| Short Form | Long Form    | Description                                             |
-| ---------- | ------------ | ------------------------------------------------------- |
-| -d         | --domain     | Domain name to enumerate subdomains of                  |
-| -b         | --bruteforce | Enable the subbrute bruteforce module                   |
-| -p         | --ports      | Scan the found subdomains against specific tcp ports    |
-| -v         | --verbose    | Enable the verbose mode and display results in realtime |
-| -t         | --threads    | Number of threads to use for subbrute bruteforce        |
-| -e         | --engines    | Specify a comma-separated list of search engines        |
-| -o         | --output     | Save the results to text file                           |
-| -h         | --help       | show the help message and exit                          |
-
+Short Form    | Long Form     | Description
+------------- | ------------- |-------------
+-d            | --domain      | Domain name to enumerate subdomains of (comma separated list of domains works too)
+-b            | --bruteforce  | Enable the subbrute bruteforce module
+-p            | --ports       | Scan the found subdomains against specific tcp ports
+-v            | --verbose     | Enable the verbose mode and display results in realtime
+-t            | --threads     | Number of threads to use for subbrute bruteforce
+-e            | --engines     | Specify a comma-separated list of search engines
+-o            | --output      | Save the results to text file
+-f            | --format      | File format to save the results ("text" or "json")
+-h            | --help        | Show the help message and exit
+-i            | --findip      | Find IP address of each subdomain
 
 ### Examples
 
@@ -124,9 +136,13 @@ c:\python27\python.exe -m pip install win_unicode_console colorama
 
 ``python sublist3r.py -d example.com``
 
-* To enumerate subdomains of specific domain and show only subdomains which have open ports 80 and 443 :
+* To enumerate subdomains of specific domain and check for ports 80 and 443:
 
 ``python sublist3r.py -d example.com -p 80,443``
+
+* To enumerate subdomains and enable IP address resolution:
+
+``python sublist3r.py -v -i -d example.com``
 
 * To enumerate subdomains of specific domain and show the results in realtime:
 
@@ -147,7 +163,7 @@ c:\python27\python.exe -m pip install win_unicode_console colorama
 
 ```python
 import sublist3r
-subdomains = sublist3r.main(domain, no_threads, savefile, ports=None, silent=True, verbose=False, enable_bruteforce=False, engines=None)
+subdomains = sublist3r.main(domain, threads, savefile, ports, silent, verbose, enable_bruteforce, engines, find_ip, fileformat, json_subdomains)
 ```
 The main function will return a set of unique subdomains found by Sublist3r
 
@@ -181,4 +197,4 @@ Sublist3r is licensed under the GNU GPL license. take a look at the [LICENSE](ht
 * Special Thanks to [Ibrahim Mosaad](https://twitter.com/ibrahim_mosaad) for his great contributions that helped in improving the tool.
 
 ## Version
-**Current version is 1.0**
+**Current version is 1.1**

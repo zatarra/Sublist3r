@@ -113,6 +113,7 @@ def parse_args():
     parser.add_argument('-o', '--output', help='Save the results to text file')
     parser.add_argument('-f', '--format', help='Output format: <text|json>', type=str, default="text")
     parser.add_argument('-i', '--findip', help='Find IP address of each subdomain', action='store_true')
+    parser.add_argument('-l', '--plugin', help='Pass the results to a plugin')
     return parser.parse_args()
 
 
@@ -1086,6 +1087,7 @@ if __name__ == "__main__":
     verbose = args.verbose
     engines = args.engines
     find_ip = args.findip
+    plugin  = args.plugin
 
     if verbose or verbose is None:
       verbose = True
@@ -1094,6 +1096,16 @@ if __name__ == "__main__":
     for domain in args.domain.split(","):
         subdomains_list = {}
         res = main(domain, threads, savefile, ports, silent=False, verbose=verbose, enable_bruteforce=enable_bruteforce, engines=engines, find_ip=find_ip, fileformat=fileformat, json_subdomains=subdomains_list)
+
+        if plugin:
+            try:
+                import importlib
+                my_plugin = importlib.import_module('plugins.{}'.format(plugin))
+                res  = my_plugin.SubPlugin(subdomains_list).run()
+            except Exception as e:
+                print("{}[-] Invalid plugin specified: {} -> {} {}".format(R, plugin, e.message, W))
+
+
         if savefile:
             pattern_file = "{}_{}".format(savefile, domain)
 

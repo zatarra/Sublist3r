@@ -23,7 +23,7 @@ Sublist3r is a python tool designed to enumerate subdomains of websites using OS
 ## Installation
 
 ```
-git clone https://github.com/aboul3la/Sublist3r.git
+git clone https://github.com/zatarra/Sublist3r.git
 ```
 
 ## Recommended Python Version:
@@ -125,6 +125,7 @@ Short Form    | Long Form     | Description
 -f            | --format      | File format to save the results ("text" or "json")
 -h            | --help        | Show the help message and exit
 -i            | --findip      | Find IP address of each subdomain
+-l            | --plugin      | Pass the results to a plugin for further processing
 
 ### Examples
 
@@ -156,6 +157,13 @@ Short Form    | Long Form     | Description
 
 ``python sublist3r.py -e google,yahoo,virustotal -d example.com``
 
+* To enumerate multiple domains at once
+
+``python sublist3r.py -d foo.com,bar.com``
+
+* To pass the results to plugin _demo_ for further processing 
+
+``python sublist3r.py -d foo.com,bar.com -l demo``
 
 ## Using Sublist3r as a module in your python scripts
 
@@ -182,6 +190,32 @@ import sublist3r
 subdomains = sublist3r.main('yahoo.com', 40, 'yahoo_subdomains.txt', ports=None, silent=False, verbose=False, enable_bruteforce=False, engines=None)
 ```
 
+## Plugins
+
+Very basic support for plugins is now enabled. This is the structure for a plugin:
+```
+import json
+import requests
+
+
+
+
+class SubPlugin():
+
+    def __init__(self, subdomains_list):
+        self.subdomains = subdomains_list
+
+
+    def run(self):
+        ''' Do stuff here '''
+        return self.subdomains
+
+```
+
+It might be interesting for targeted actions (e.g. banner grabbing, specific security tests, etc). The example provided with this repo retrieves the HTTP response and attaches it to the results. 
+the HTTP response and attaches it to the results. 
+
+
 ## License
 
 Sublist3r is licensed under the GNU GPL license. take a look at the [LICENSE](https://github.com/aboul3la/Sublist3r/blob/master/LICENSE) for more information.
@@ -194,7 +228,7 @@ Sublist3r is licensed under the GNU GPL license. take a look at the [LICENSE](ht
 
 ## Thanks
 
-* Special Thanks to [Ibrahim Mosaad](https://twitter.com/ibrahim_mosaad) for his great contributions that helped in improving the tool.
+* Special Thanks to [Ibrahim Mosaad](https://twitter.com/ibrahim_mosaad) for his great contributions that helped in improving the tool and to [Ahmed Aboul-Ela](https://github.com/aboul3la) for the original codebase.
 
 ## Version
-**Current version is 1.1**
+**Current version is 1.0**

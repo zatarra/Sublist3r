@@ -215,6 +215,13 @@ class SubPlugin():
 It might be interesting for targeted actions (e.g. banner grabbing, specific security tests, etc). The example provided with this repo retrieves the HTTP response and attaches it to the results. 
 the HTTP response and attaches it to the results. 
 
+Currently there are a few plugins that can be invoked:
+
+* s3 - Search for potential S3 Buckets
+* networkid - Get ASN information regarding the IP
+* shodan - Grab information regarding open ports straight from shodan.io
+* demo - store the http contents for a given request to each IP 
+
 
 ## License
 

@@ -78,7 +78,7 @@ def banner():
                 / ___| _   _| |__ | (_)___| |_|___ / _ __
                 \___ \| | | | '_ \| | / __| __| |_ \| '__|
                  ___) | |_| | |_) | | \__ \ |_ ___) | |
-                |____/ \__,_|_.__/|_|_|___/\__|____/|_|%s REBOOT!%s
+                |____/ \__,_|_.__/|_|_|___/\__|____/|_|%s REVAMPED!%s
 
                 # Coded By Ahmed Aboul-Ela - @aboul3la
                 # Improved By David Gouveia - @davidsgouveia
@@ -1101,7 +1101,9 @@ if __name__ == "__main__":
             try:
                 import importlib
                 my_plugin = importlib.import_module('plugins.{}'.format(plugin))
+                print("{}[-] Attempting to load plugin: {}  {}".format(B, plugin, W))
                 res  = my_plugin.SubPlugin(subdomains_list).run()
+                print("{}[-] Plugin execution finished: {}  {}".format(B, plugin, W))
             except Exception as e:
                 print("{}[-] Invalid plugin specified: {} -> {} {}".format(R, plugin, e.message, W))
 
